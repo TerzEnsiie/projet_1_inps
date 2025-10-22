@@ -1,0 +1,45 @@
+#include "../lib/hermite.h"
+#include <iostream>
+#include <cmath>
+#include <armadillo>
+#include <stdio.h>
+
+using namespace std;
+
+/**
+ * @brief Construct a new Hermite:: Hermite object
+ *
+ * @param _matrix
+ */
+Hermite::Hermite(arma::mat _matrix) : matrix(_matrix)
+{
+
+}
+
+/**
+ * @brief
+ *
+ * @return arma::mat
+ */
+arma::mat Hermite::hermite_calc()
+{
+    for(arma::uword i=0; i < matrix.n_rows; i++)
+    {
+        for(arma::uword j=0; j < matrix.n_cols; j++)
+        {
+            if (i==0)
+            {
+                matrix(i,j)=1;
+            }
+            else if(i==1)
+            {
+                matrix(i,j)=2*matrix(i,j);
+            }
+            else
+            {
+                matrix(i,j)= 2*j*matrix(i-1,j)-2*i*matrix(i-2,j);
+            }
+        }
+    }
+    return matrix;
+}

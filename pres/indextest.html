@@ -1,0 +1,825 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>IPS / PSA</title>
+    <meta charset="utf-8" />
+    <link rel="stylesheet" type="text/css" href="core/fonts/mono.css">
+    <link rel="stylesheet" type="text/css" href="core/css/animate.css">
+    <link rel="stylesheet" type="text/css" href="core/css/cinescript.css">
+    <link rel="stylesheet" type="text/css" href="core/css/style_core.css">
+    <link rel="stylesheet" type="text/css" href="core/css/mermaid.css">
+    <link rel="stylesheet" type="text/css" href="core/css/gitgraph.css">
+    <link rel="stylesheet" type="text/css" href="core/css/style_ensiie.css">
+    <link rel="stylesheet" type="text/css" href="core/css/katex.css">
+</head>
+
+<body>
+    <textarea id="source" readonly>
+
+class: middle
+
+# Projet INPS 1
+
+.footnote[E.Onal, S. Darnault, T. Gounine - ENSIIE - 2023]
+
+
+
+I. [Introduction au problème](index.html#2) 
+--
+
+  1. Présentation du problème
+  2. Polynômes d'Hermite
+
+--
+
+II. [Résolution du problème](index.html#4)
+--
+
+   1. Solutions de l'équation 1D-HO
+   2. Execution du programme
+   3. Graphe des solutions.
+
+--
+
+III. [Vérifications et conclusion](index.html#8)
+--
+
+1. Niveaux d'énergie
+2. Orthonormalité des solutions
+3. Tests unitaires effectués
+4. Conclusion
+---
+class: middle
+# I - Introduction - Présentation du problème
+
+.footnote[E.Onal, S. Darnault, T. Gounine - ENSIIE - 2023]
+
+- Système: Électron dans un oscillateur harmonique quantique 1D.
+- Nous souhaitions résoudre l'équation de Schrödinger en 1 dimension et vérifier quelques propriétés associées.
+
+---
+class: middle
+# I - Introduction - Polynomes d'Hermite
+
+.footnote[E.Onal, S. Darnault, T. Gounine - ENSIIE - 2023]
+
+Pour calculer les polynômes d'Hermite, nous avons utilisé la définition récursive suivante :
+`$$H_0(z) = 1$$`
+`$$H_1(z) = 2z$$`
+`$$\forall n\ge 1, H_{n+1}(z) = 2zH_n(z)-2nH_{n-1}(z).$$`
+
+La taille de l'intervalle des z est laissée à l'utilisateur. Pour des rendus efficace, nous centrons en 0 cet intervalle.
+De même pour le niveau d'énergie (max n=10).
+Ainsi, nous pouvons obtenir la matrice avec tout les polynômes d'hermite calculés ainsi : 
+
+$$
+H_n\left(\sqrt{\frac{m \omega}{\hbar}} . z\right)
+$$
+
+
+
+```cpp
+arma::mat Hermite::hermite_calc(int n)
+{
+    arma::mat matrix = arma::zeros(n, z_vec.n_elem); // Creates a matrix full of zeros 
+
+    arma::vec Z = sqrt(m*omega/h_bar) * z_vec; // We change the z values to match what we need in psi 
+                                               // Because Psi use Hn(sqrt(m*omega/h_bar)*z) not juste Hn(z)
+    for(arma::uword i=0; i < matrix.n_rows; i++) {
+        for(arma::uword j=0; j < matrix.n_cols; j++) { //Then we use the recursive definition of Hermite polynomials
+            if (i==0) {
+                matrix(i,j)=1;
+            } else if(i==1) {
+                matrix(i,j)=2*Z(j);
+            } else {
+                matrix(i,j)= 2*Z(j)*matrix(i-1,j)-2*(i-1)*matrix(i-2,j);
+            }
+        }
+    }
+    return matrix;
+}
+
+```
+---
+class: middle
+
+# II - Résolution du problème - Calcul de Psi 
+
+.footnote[E.Onal, S. Darnault, T. Gounine - ENSIIE - 2023]
+
+La formule de calcul des Psi est :
+### 
+
+$$
+\psi_n(z)=\frac{1}{\sqrt{2^n n !}}\left(\frac{m \omega}{\pi \hbar}\right)^{1 / 4} e^{-\frac{m \omega z^2}{2 \hbar}} H_n\left(\sqrt{\frac{m \omega}{\hbar}} . z\right)
+$$
+
+### Implémentation
+
+```cpp
+// ... code ...
+
+arma::mat Psi::psi_calc(int n_max, arma::mat matrix_hermite)
+{
+
+    arma::mat matrix = arma::zeros(n_max, z_vec.n_elem);
+
+    for(arma::uword i=0; i < matrix.n_rows; i++)
+    {
+        for(arma::uword j=0; j < matrix.n_cols; j++)
+        {
+            matrix(i,j) = 1/sqrt(pow(2.0,i)*fact(i))*pow((m*omega)/(h_bar*M_PI),1/4)*exp(-(m*omega*pow(z_vec(j),2))/(2*h_bar))*matrix_hermite(i, j);
+        }
+    }
+    return matrix;
+}
+
+// ... code ...
+```
+---
+class: middle
+
+# II - Résolution du problème - Représentation matricielle
+
+.footnote[E.Onal, S. Darnault, T. Gounine - ENSIIE - 2023]
+
+#### Expression Matricielle : Hermite
+`
+$$
+\text{HermiteValues} =
+\begin{pmatrix}
+H_0(z_1) & H_0(z_2) & \ldots & H_0(z_m) \\
+H_1(z_1) & H_1(z_2) & \ldots & H_{1}(z_m) \\
+\vdots & \vdots & \ddots & \vdots \\
+H_n(z_1) & H_n(z_2) & \ldots & H_n(z_m)
+\end{pmatrix}
+$$
+`
+
+#### Expression Matricielle : Psi
+`
+$$
+\text{PsiValues} =
+\begin{pmatrix}
+\psi_0(z_1) & \psi_0(z_2) & \ldots & \psi_0(z_m) \\
+\psi_1(z_1) & \psi_1(z_2) & \ldots & \psi_1(z_m) \\
+\vdots & \vdots & \ddots & \vdots \\
+\psi_n(z_1) & \psi_n(z_2) & \ldots & \psi_n(z_m) 
+\end{pmatrix}
+$$
+`
+
+---
+class: middle
+
+# II - Exécution du programme
+
+.footnote[E.Onal, S. Darnault, T. Gounine - ENSIIE - 2023]
+
+Pour faciliter l'éxecution du programme, on lance un script avec `./bin/run.sh`
+qui permet d'automatiser la compilation du programme, son éxécution et l'affichage
+du graphe final en fonction des paramètres donnés par l'utilisateur pendant l'éxécution.
+
+On éxécute le script suivant :
+```sh
+#!/bin/bash
+
+echo "Compilation avec make du projet"
+make
+
+echo "Execution de ./bin/main"
+./bin/main
+
+echo "Execution de plot.py pour l'affichage"
+python3 src/plot.py
+
+echo "Ouverture de l'image de résultat"
+open output_graph.png
+```
+
+---
+class: middle
+
+# II - Makefile
+
+.footnote[E.Onal, S. Darnault, T. Gounine - ENSIIE - 2023]
+
+Le Makefile appelé est le suivant :
+```Makefile
+# Variables pour la compilation
+CC = g++
+CFLAGS = $(shell pkg-config --cflags armadillo) -Wall -Werror -g -O2
+LDLIBS = $(shell pkg-config --libs armadillo) -llapack -lblas
+SDIR = src
+HDIR = lib
+BDIR = bin
+TDIR = test
+TARGET = $(BDIR)/main
+TEST_TARGET = $(BDIR)/test_runner
+
+# Variables pour Doxygen
+DOXYGEN = doxygen
+DOXYFILE = doc/Doxyfile
+DOCDIR = doc/html
+
+# Sources, objets, et fichiers de test
+SRCS = $(wildcard $(SDIR)/*.cpp)
+OBJS = $(patsubst $(SDIR)/%.cpp, $(BDIR)/%.o, $(filter-out $(SDIR)/main.cpp, $(SRCS)))
+TEST_HEADERS = $(wildcard $(TDIR)/test_*.h)
+
+RUNNER_CPP = $(BDIR)/runner.cpp
+RUNNER_OBJ = $(BDIR)/runner.o
+
+# Compilation principale
+all: $(TARGET)
+
+$(TARGET): $(OBJS) $(BDIR)/main.o | $(BDIR)
+	$(CC) $(OBJS) $(BDIR)/main.o -o $(TARGET) $(LDLIBS)
+
+$(BDIR)/main.o: $(SDIR)/main.cpp
+	$(CC) $(CFLAGS) -c $(SDIR)/main.cpp -o $@
+
+```
+
+---
+class: middle
+
+# II - Makefile
+
+.footnote[E.Onal, S. Darnault, T. Gounine - ENSIIE - 2023]
+
+```Makefile
+# Génération et compilation des tests avec CxxTest
+$(RUNNER_CPP): $(TEST_HEADERS)
+	cxxtestgen --error-printer -o $(RUNNER_CPP) $(TEST_HEADERS)
+
+$(RUNNER_OBJ): $(RUNNER_CPP)
+	$(CC) $(CFLAGS) -c $(RUNNER_CPP) -o $@
+
+tests: $(TEST_TARGET)
+
+$(TEST_TARGET): $(RUNNER_OBJ) $(OBJS) | $(BDIR)
+	$(CC) $(RUNNER_OBJ) $(OBJS) -o $(TEST_TARGET) $(LDLIBS)
+
+$(BDIR)/%.o: $(SDIR)/%.cpp $(HDIR)/%.h
+	$(CC) $(CFLAGS) -c $< -o $@
+
+$(BDIR):
+	mkdir -p $(BDIR)
+
+# Génération de la documentation avec Doxygen
+.PHONY: doc
+doc:
+	@echo "Génération de la documentation avec Doxygen..."
+	$(DOXYGEN) $(DOXYFILE)
+	@echo "La documentation HTML a été générée dans $(DOCDIR)"
+
+# Nettoyage des fichiers objets, binaires, et documentation
+.PHONY: clean
+clean:
+	rm -f $(OBJS) $(RUNNER_OBJ) $(TARGET) $(TEST_TARGET) $(RUNNER_CPP)
+	rm -rf $(DOCDIR)
+```
+---
+class: middle
+
+# II - Solutions de l'équation 1D-HO - Main (1)
+
+.footnote[E.Onal, S. Darnault, T. Gounine - ENSIIE - 2023]
+
+
+#### Utilisation du main
+Dans le main, on commence par demander à l'utilisateur les données de z_min, z_max, le pas et
+le nombre de niveaux d'énergie souhaités. 
+
+### Demandes du main :
+
+```cpp
+// ... code ...
+
+// Ask the user for parameters
+cout << "Entrez la valeur de z_min" << endl;
+float z_min = ask_for_float();
+cout << "Entrez la valeur de z_max" << endl;
+float z_max = ask_for_float();
+cout << "Entrez le nombre de points voulu entre z_min et z_max" << endl;
+int N_z = ask_for_int();
+cout << "Entrez le dégré maximal voulu pour les polynômes d'Hermite, cette valeur doit être inférieure à 10." << endl;
+int n_max = ask_for_int();
+while (n_max > 10)
+{
+    cout << "Le degré maximal des polynômes doit être inférieure à 10." << endl;
+    n_max = ask_for_int();
+}
+
+
+// ... code ...
+```
+
+---
+class: middle
+
+# Solutions de l'équation 1D-HO - Main (2)
+
+.footnote[E.Onal, S. Darnault, T. Gounine - ENSIIE - 2023]
+
+
+#### Utilisation du main
+Une fois les données récupérées on calcule la matrice des solutions 
+
+### Suite du main :
+
+```cpp
+// ... code ...
+// Vector of z
+arma::vec z_vec = arma::linspace(z_min, z_max, N_z);
+
+Hermite hermite(z_vec);
+arma::mat matrix_hermite = hermite.hermite_calc(n_max); // We create the hermite polynomials matrix with all the values stored in 
+
+Psi psi(z_vec);
+arma::mat matrix = psi.psi_calc(n_max, matrix_hermite); // We change it to Psi function
+
+// ... code ...
+```
+---
+class: middle
+# II - Graphe obtenu
+.footnote[E.Onal, S. Darnault, T. Gounine - ENSIIE - 2023]
+
+On utilise le module `matplotlib` en python pour afficher les graphes de chaque
+Psi.
+
+```python
+import matplotlib.pyplot as plt
+import numpy as np
+
+# Read the 'output.log' file
+file_path = 'output.log'
+with open(file_path, 'r') as file:
+    lines = file.readlines()
+
+x_min = float(lines[0].strip())  # Line 1 : min x value
+x_max = float(lines[1].strip())  # Line 2 : max x value
+num_points = int(lines[2].strip())  # Line 3 : nb of points
+num_graphs = int(lines[3].strip())  # Line 4 : nb of graph to plut
+
+# Read the data for [num_graphs] lines and [num_points] points each line
+data = [list(map(float, line.strip().split())) for line in lines[4:4+num_graphs]]
+
+# Create a subplot for each line
+fig, axes = plt.subplots(num_graphs, 1, figsize=(10, 10))
+
+# If there's only one line, convert the type of axes
+if num_graphs == 1:
+    axes = [axes]
+
+x_values = np.linspace(x_min, x_max, num_points)
+
+colors = ['blue', 'purple', 'red', 'orange', 'yellow', 'green', 'cyan']
+
+# Print the graphs
+for i, ax in enumerate(axes):
+    ax.plot(x_values, data[i], color=colors[i % len(colors)])
+    ax.fill_between(x_values, data[i], color=colors[i % len(colors)], alpha=0.3)
+    ax.set_xlim(x_min, x_max)
+    ax.set_title(f'Graphe Psi{i}(x)')
+    ax.grid(True)
+
+# Ajust size of each plot
+plt.tight_layout()
+
+# Save the plot
+plt.savefig('output_graph.png')
+```
+
+---
+lass: middle
+# II - Graphe obtenu
+.footnote[E.Onal, S. Darnault, T. Gounine - ENSIIE - 2023]
+
+On obtient le graphe suivant :
+
+.hcenter.shadow.w60[
+![](images/output_graph.png)
+]
+
+---
+
+class: middle
+
+# Energie
+
+## III - Estimation de l'Énergie
+
+.footnote[E.Onal, S. Darnault, T. Gounine - ENSIIE - 2023]
+
+- Théorie
+- Implémentation 
+- Validation en comparant les résultats avec la formule théorique
+
+---
+class: middle
+
+# Energie - Théorie
+
+.footnote[E.Onal, S. Darnault, T. Gounine - ENSIIE - 2023]
+
+1. Formule d'Estimation de l'Énergie :
+
+   $$
+   \left(\frac{\hat{p}_{(z)}^2}{2 m}+\frac{1}{2} m \omega^2 \hat{z}^2\right) \psi_n=E_n \psi_n .
+   $$
+
+2. **Dérivation** :
+
+   Application des opérateurs sur `\(psi(z)\)` :
+
+     $$
+     \left(-\frac{\hbar^2}{2 m}\frac{\partial^2}{\partial z^2} + \frac{1}{2} m \omega^2 z^2\right) \psi_n = E_n \psi_n
+     $$
+
+   Division par `\(psi(z)\)` pour isoler `\(E_n\)` :
+
+     $$
+     E_n = \frac{1}{\psi_n}\left(-\frac{\hbar^2}{2 m}\frac{\partial^2 \psi_n}{\partial z^2} + \frac{1}{2} m \omega^2 z^2 \psi_n\right)
+     $$
+
+3. **Approximation de la Dérivée Seconde** :
+
+    $$
+     \frac{d^2 \psi}{dz^2} \approx \frac{\psi(z + \delta z) - 2 \psi(z) + \psi(z - \delta z)}{{\delta z}^2}
+    $$
+
+    Lorsque `\( \delta z \rightarrow 0 \)`, la dérivée seconde numérique tend vers la dérivée seconde théorique
+
+---
+class: middle
+
+# III - Energie - Implémentation
+
+### Obtention de la dérivée seconde
+
+.footnote[E.Onal, S. Darnault, T. Gounine - ENSIIE - 2023]
+
+```cpp
+mat Energy::second_derivative(const mat &psi, double dz) {
+    // Check that the size of psi is correct
+    if (psi.n_rows < 3) {
+        throw std::invalid_argument("La matrice psi doit avoir au moins 3 lignes pour calculer la dérivée seconde.");
+    }
+
+    // Creats a matrix if the same dimensions as psi
+    mat d2_psi = zeros<mat>(size(psi)); 
+
+    // Loop on the matrix with special treatment for the borders
+    for (uword j = 0; j < psi.n_cols; ++j) { 
+        for (uword i = 1; i < psi.n_rows - 1; ++i) {
+            d2_psi(i, j) = (psi(i - 1, j) - 2.0 * psi(i, j) + psi(i + 1, j)) / (dz * dz);
+        }
+
+        // Treats the border
+        d2_psi(0, j) = (psi(1, j) - 2.0 * psi(0, j)) / (dz * dz);
+        d2_psi(psi.n_rows - 1, j) = (psi(psi.n_rows - 2, j) - 2.0 * psi(psi.n_rows - 1, j)) / (dz * dz);
+    }
+
+    return d2_psi;
+}
+```
+
+Calcul de la dérivée seconde numérique, conforme à l'approximation discutée dans la théorie.
+
+Choix du pas : `\(pas = \frac{z_{\textbf{max}} - z_{\textbf{min}}}{nbpoint} \)`
+
+Formule de la dérivée seconde numérique :
+
+ $$
+ \frac{d^2 \psi}{dz^2} \approx \frac{\psi(i + 1) - 2 \psi(i) + \psi(i - 1)}{\text{pas}^2}
+ $$
+
+Remarque : plus il y a de points, plus la dérivée seconde numérique est précise.
+---
+class: middle
+
+# III - Energie - Implémentation
+
+### Calcul numérique des niveaux d'énergie :
+
+.footnote[E.Onal, S. Darnault, T. Gounine - ENSIIE - 2023]
+
+```cpp
+void Energy::check_energy(const mat &psi, vec z_vec, double dz)
+{
+    mat C = -((h_bar*h_bar)/(2*m)) * second_derivative(psi,  dz);
+    //cout << "Dimensions de C: " << C.n_rows << "x" << C.n_cols << endl;
+    vec v0 = (0.5*m*omega*omega*z_vec%z_vec);
+    //cout << "Dimensions de v0: " << v0.n_rows << "x" << v0.n_cols << endl;
+
+    mat V = arma::zeros(n, z_vec.n_elem);
+    for(int i = 0; i < n; i++)
+    {
+        for(uword j = 0; j < z_vec.n_elem; j++)
+        {
+            V(i, j) = v0(j)*psi(i, j);
+        }
+    }
+    //cout << "Dimensions de V: " << V.n_rows << "x" << V.n_cols << endl;
+    mat left_mat = C + V;
+    //cout << "Dimensions de left_mat  : " << left_mat.n_rows << "x" << left_mat.n_cols << endl;
+    double En = calculateEnergy();
+    mat right_mat = En * psi;
+    //cout << "Dimensions de right_mat  : " << right_mat.n_rows << "x" << right_mat.n_cols << endl;
+    cout << "Vérification de l'équation de Shrödinger 1D-HO" << endl;
+
+    if (arma::approx_equal(left_mat, right_mat, "absdiff", 1e-10)) {
+        cout << "Les deux côtés de l'équation sont égaux, donc Psi_n vérifie l'équation" << endl;
+    } else {
+        cout << "Psi_n ne vérifie pas l'équation" << endl;
+    }
+    cout << "Vérification TERMINE\n" << endl;
+
+    return;
+}
+```
+
+---
+class: middle
+# III - Energie - Validation numérique
+.footnote[E.Onal, S. Darnault, T. Gounine - ENSIIE - 2023]
+
+`$${\displaystyle \forall i \in \llbracket 1, n \rrbracket,~E_{i}=\left(i+{\frac {1}{2}}\right)\hbar \omega }$$`
+
+On remarque l'utilisation d'une fonction calculateEnergy(). Cette fonction renvoie la valeur théorique des niveaux d'énergie. (formule ci-dessus)
+```cpp
+double Energy::calculateEnergy() {
+    return h_bar * omega * (n + 0.5);
+}
+
+```
+On a utilisé une précision à 7 chiffres après la virgule pour vérifier nos résultats
+---
+class: middle
+#Orthonormalité - Théorie 
+.footnote[E.Onal, S. Darnault, T. Gounine - ENSIIE - 2023]
+
+On cherche à vérifier l'orthonormalité des solutions 1D-HO.
+Soient N, n et k trois entiers positifs tels que `\(n,k<N\)` et `\(n+k\leq2N-1\)`, et le produit scalaire entre deux solutions :
+`$$\langle \psi_n,\psi_k \rangle=\displaystyle \int_{\mathbb{R}} \psi_n(z)\psi_k(z) \, \mathrm{d}z$$`
+
+
+D'après la formule de `\(\psi_n(z)\)`, on obtient :
+
+
+`$$\langle \psi_n,\psi_k \rangle=\frac{1}{\sqrt{2^nn!}}
+        \frac{1}{\sqrt{2^kk!}}\left(\frac{m\omega}{\pi\hbar}\right)^{1/4}
+        \left(\frac{m\omega}{\pi\hbar}\right)^{1/4}\displaystyle \int_{\mathbb{R}}
+        e^{-\frac{m\omega z^2}{2\hbar}}H_n\left( \sqrt{\frac{m\omega}{\hbar}}z \right)
+        e^{-\frac{m\omega z^2}{2\hbar}}H_k\left( \sqrt{\frac{m\omega}{\hbar}}z \right) \,\mathrm{d}z$$`
+
+Ici, nous n'avons pas simplifié la partie constante par rapport à z, mais il était possible de le faire.
+---
+
+class: middle
+#Orthonormalité - Théorie
+.footnote[E.Onal, S. Darnault, T. Gounine - ENSIIE - 2023]
+
+On remarque ensuite que l'on peut faire un changement de variable `\(Z=\sqrt{\frac{m\omega}{\hbar}}.z\)`
+        pour se placer dans le cas d'une quadrature avec une fonction de poids `\(\omega(z)=e^{-z}\)` :
+
+
+`$$\langle \psi_n,\psi_k \rangle= \frac{1}{\sqrt{2^nn!}}
+\frac{1}{\sqrt{2^kk!}}\left(\frac{m\omega}{\pi\hbar}\right)^{1/4}\left(\frac{m\omega}{\pi\hbar}\right)^{1/4}
+        \displaystyle \int_{\mathbb{R}} e^{-Z^2}H_n(Z)H_k(Z) \, \mathrm{d}Z$$`
+
+On utilise donc la quadrature de Gauss-Hermite ce qui donne :
+
+
+`$$\langle \psi_n,\psi_k \rangle= \frac{1}{\sqrt{2^nn!}}
+\frac{1}{\sqrt{2^kk!}}\left(\frac{m\omega}{\pi\hbar}\right)^{1/4}\left(\frac{m\omega}{\pi\hbar}\right)^{1/4}
+\sum_{i=0}^N{\omega_iH_n(z_i)H_k(z_i)}$$`
+---
+class: middle
+#Orthonormalité - Implémentation
+
+.footnote[E.Onal, S. Darnault, T. Gounine - ENSIIE - 2023]
+Une fois que les valeurs des polynômes en tout point `\(z_i\)` (noeuds de la quadrature) sont obtenues,
+il suffit d'appliquer la formule précédemment calculée, en vérifiant que les conditions d'exactitude de la quadrature sont réunies.
+Nous avons utilisé N=25 pour la somme, ce qui inclut une égalité pour les niveaux d'énergie inférieurs ou égaux a 12.
+Voici les tableaux des poids et des noeuds de la quadrature.
+
+```cpp
+float xi[25]={-6.16427243, -5.41363636, -4.78532037, -4.21860944, -3.69028288,
+-3.18829492, -2.70532024, -2.23642013, -1.77800112, -1.3272807 ,
+-0.88198276, -0.4401473 ,  0.        ,  0.4401473 ,  0.88198276,
+ 1.3272807 ,  1.77800112,  2.23642013,  2.70532024,  3.18829492,
+ 3.69028288,  4.21860944,  4.78532037,  5.41363636,  6.16427243};//This is the xi (Nodes) We use only the twenty first one so we can technically go up to 12 
+                                                                 // "true" energy levels
+
+float wi[25]={2.71192351e-17, 1.25881499e-13, 6.71963842e-11, 1.01703825e-08,
+6.25703250e-07, 1.89159730e-05, 3.15083639e-04, 3.11570872e-03,
+1.92430990e-02, 7.68889952e-02, 2.03621137e-01, 3.63088989e-01,
+4.39868722e-01, 3.63088989e-01, 2.03621137e-01, 7.68889952e-02,
+1.92430990e-02, 3.11570872e-03, 3.15083639e-04, 1.89159730e-05,
+6.25703250e-07, 1.01703825e-08, 6.71963842e-11, 1.25881499e-13, // This is the wi  (weight) 
+2.71192351e-17};
+
+
+```
+
+---
+class: middle
+#Orthonormalité - Implémentation
+Et voici comment nous les obtenons : 
+.footnote[E.Onal, S. Darnault, T. Gounine - ENSIIE - 2023]
+```cpp
+bool make_ortho_all(int n_rows){
+    int nb_false = 0;
+    int tot= 0;
+    for(int i=0 ; i< n_rows ; i++){
+        float res1 = (1 / (sqrt(pow(2, i) * factoriel(i)))) * pow(1 / M_PI, 0.25);
+        for(int j=0 ; j< n_rows ; j++ ){
+            float res2 = (1 / (sqrt(pow(2, j) * factoriel(j)))) * pow(1 / M_PI, 0.25);
+
+            float res = make_ortho(i,j);
+            if(i==j){
+                if (res1*res2*res > 0.9999 && res1*res2*res < 1.0001 ){
+                    tot++;
+                }
+                else{
+                    nb_false++;
+                    tot++;
+                }
+            }   
+            else{
+                if(res1*res2*res < 0.001 && res1*res2*res > -0.001){
+                    tot++;
+                }
+                else{
+                    nb_false++;
+                    tot++;
+                }}}}
+    printf("number of false is : %d out of %d\n", nb_false, tot);
+    if(nb_false == 0){
+        printf("Then, every check of orthonormality is true ! Good job ! ");
+        return true;
+    }
+    else{
+        printf("Then, we have at least one false check ! Too bad !");
+        return false;
+    }
+}
+```
+---
+class: middle
+# III - Vérifications - Tests unitaires
+.footnote[E.Onal, S. Darnault, T. Gounine - ENSIIE - 2023]
+
+##### Pour les polynômes d'Hermite :
+
+`$${H}_{0}=1 \\
+{H}_{1}=2X \\
+{H}_{2}=4X^{2}-2 \\
+{H}_{3}=8X^{3}-12X \\
+{H}_{4}=16X^{4}-48X^{2}+12 \\
+{H}_{5}=32X^{5}-160X^{3}+120X$$`
+
+```cpp
+
+// Test du calcul des premiers polynômes d'Hermite
+void testHermiteCalc() {
+    arma::vec z_vec = {0, 1, 2, 3, 4, 5, 6, 7};
+    Hermite hermite(z_vec);
+    int n = 6;
+
+    arma::mat matrix_hermite = hermite.hermite_calc(n);
+
+    arma::mat hermite_expected = arma::mat(n, z_vec.n_elem);
+    hermite_expected.row(0) = arma::rowvec({1, 1, 1, 1, 1, 1, 1, 1});
+    hermite_expected.row(1) = arma::rowvec({0, 2, 4, 6, 8, 10, 12, 14});
+    hermite_expected.row(2) = arma::rowvec({-2, 2, 14, 34, 62, 98, 142, 194});
+    hermite_expected.row(3) = arma::rowvec({0, -4, 40, 180, 464, 940, 1656, 2660});
+    hermite_expected.row(4) = arma::rowvec({12, -20, 76, 876, 3340, 8812, 19020, 36076});
+    hermite_expected.row(5) = arma::rowvec({0, -8, -16, 3816, 23008, 80600, 214992, 483784});
+
+    for(int i = 0; i < n; i++)
+    {
+        for(arma::uword j = 0; j < z_vec.n_elem; j++)
+        {
+            TS_ASSERT_DELTA(matrix_hermite(i, j), hermite_expected(i, j), epsilon);
+        }
+    }
+}
+
+```
+---
+class: middle
+# III - Vérifications - Tests unitaires
+.footnote[E.Onal, S. Darnault, T. Gounine - ENSIIE - 2023]
+
+##### Pour les Psi :
+```cpp
+
+class PsiTestSuite : public CxxTest::TestSuite {
+    public:
+        void testPsiCalc() {
+            // Créer un vecteur z avec des entiers de 0 à 7 inclus
+            arma::vec z_vec = {0, 1, 2, 3, 4, 5, 6, 7};
+    
+            // Créer une instance de Psi
+            Psi psi(z_vec);
+    
+            // Calculer la matrice des polynômes d'Hermite pour n_max = 5
+            Hermite hermite(z_vec);
+            arma::mat matrix_hermite = hermite.hermite_calc(5);
+    
+            // Calculer la matrice psi
+            arma::mat matrix_psi = psi.psi_calc(5, matrix_hermite);
+    
+            // Effectuer des assertions pour vérifier les résultats
+            for (int n = 0; n <= 5; ++n) {
+                for (size_t j = 0; j < z_vec.n_elem; ++j) {
+                    double expected_value = calculateExpectedPsi(n, z_vec[j], matrix_hermite, z_vec);
+                    TS_ASSERT_DELTA(matrix_psi(n, j), expected_value, 1e-6); // Tolerance de 1e-6
+                }
+            }
+        }
+    }
+
+```
+
+
+
+
+
+
+
+
+
+
+    </textarea>
+
+    <script src="core/javascript/remark.js"></script>
+    <script src="core/javascript/katex.min.js"></script>
+    <script src="core/javascript/auto-render.min.js"></script>
+    <script src="core/javascript/emojify.js"></script>
+    <script src="core/javascript/mermaid.js"></script>
+    <script src="core/javascript/term.js"></script>
+    <script src="core/javascript/jquery-2.1.1.min.js"></script>
+    <script src="core/javascript/extend-jquery.js"></script>
+    <script src="core/javascript/cinescript.js"></script>
+    <script src="core/javascript/gitgraph.js"></script>
+    <script>
+
+        // === Remark.js initialization ===
+        var slideshow = remark.create({
+            highlightStyle: 'monokai',
+            countIncrementalSlides: false,
+            highlightLines: false
+        });
+
+        // === Mermaid.js initialization ===
+        mermaid.initialize({
+            startOnLoad: false,
+            cloneCssStyles: false,
+            flowchart: {
+                height: 50
+            },
+            sequenceDiagram: {
+                width: 110,
+                height: 30
+            }
+        });
+
+        function initMermaid(s) {
+            var diagrams = document.querySelectorAll('.mermaid');
+            var i;
+            for (i = 0; i < diagrams.length; i++) {
+                if (diagrams[i].offsetWidth > 0) {
+                    mermaid.init(undefined, diagrams[i]);
+                }
+            }
+        }
+
+        slideshow.on('afterShowSlide', initMermaid);
+        initMermaid(slideshow.getSlides()[slideshow.getCurrentSlideIndex()]);
+
+
+        // === Emojify.js initialization ===
+        emojify.run();
+
+        // === Cinescript initialization ===
+        $(document).ready(init_cinescripts);
+
+        renderMathInElement(document.body, {
+            delimiters: [{ left: "$$", right: "$$", display: true }, {
+                left: "\\(",
+                right: "\\)",
+                display: false
+            }], ignoredTags: []
+        });
+
+    </script>
+</body>
+
+</html>

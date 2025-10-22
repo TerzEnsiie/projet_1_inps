@@ -1,0 +1,4 @@
+Valeur de z_min = -1000
+Valeur de z_max = 1000
+Nombre de points = 10000
+Degré maximal des polynômes d'Hermite = 7

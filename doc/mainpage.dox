@@ -1,0 +1,21 @@
+/**
+ * @mainpage INPS project 1 documentation
+ *
+ * @section intro_sec Introduction
+ *
+ * The objective of this project is to find the solutions to the 1D-H0 using Shrödinger's equation. We will also check some properties of the solutions.
+ *
+ * @section dependencies_sec Dependencies
+ * - C++11 Compiler
+ * - Armadillo Library
+ * - Python 3.12.3
+ * - NumPy
+ * - Matplotlib
+ *
+ * @section build_sec Build and Usage
+ * Execute the run.sh script by typing `./run.sh`
+ * It will automatically compile, execute and plot the graphs.
+ * To run test run test_runner executable, `./bin/test_runner`
+ * To generate the documentation type `make doc` and then `open doc/html/index.html`
+ */
+
