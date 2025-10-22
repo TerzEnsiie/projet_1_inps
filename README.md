@@ -1,3 +1,4 @@
+# projet_1_inps
 Usage :
 You can execute the run.sh scrpit by entering the command './run.sh'.
 
@@ -14,4 +15,3 @@ To execute the tests you can do : 'make tests' and './bin/test_runner'
 To create documentation you can do : 'make doc' and then 'open doc/html/index.htm'l
 
 You can also delete all object files with : 'make clean'
-# projet_1_inps
